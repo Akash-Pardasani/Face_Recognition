@@ -44,7 +44,7 @@ for i in range(60000):
 			shape = predictor(gray, rect)
 			shape = face_utils.shape_to_np(shape)
 			(x, y, w, h) = face_utils.rect_to_bb(rect)
-			if (len(rects) == 1):
+			if (len(rects) == 1):                #If only one face detected, treated as that of the speaker
 				im1 = image[y:y+h, x:x+w]
 				im1 = cv2.resize(im1, (240,240))	
 				cv2.imwrite("/home/akash/Desktop/Shailendra/Faces/face%d" %i, im1)
