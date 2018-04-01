@@ -37,7 +37,26 @@ class FaceID(object):
         self.split = 0.33
         self.batch_size = 100
         self.test_model = None
-        
+        self.answers = None
+    
+    def load_train_test(self):
+        test1 = np.load("drive/app/test1.npy")
+        train1 = np.load("drive/app/train1.npy")
+        X_train = []
+        Y_train = []
+        for image in train1:
+            X_train.append(image[0])
+            Y_train.append(image[1])
+        self.X_train = np.array(X_train)
+        self.Y_train = np.array(Y_train)
+        X_test = []
+        Y_test = []
+        for image in test1:
+            X_test.append(image[0])
+            Y_test.append(image[1])
+        self.X_test = np.array(X_test)
+        self.Y_test = np.array(Y_test)
+    
     def store_pretrained_vgg16(self):
         vgg16_model = keras.applications.vgg16.VGG16()
         print(vgg16_model.summary())
@@ -51,10 +70,10 @@ class FaceID(object):
             layer.trainable = False
         model.add(Dense(7, activation='softmax'))
         print(model.summary())
-        model.save("/Users/architaggarwal/Downloads/model.h5")
+        model.save("drive/app/model.h5")
         
     def load_vgg(self):
-        new_model = load_model("/Users/architaggarwal/Downloads/model.h5")
+        new_model = load_model("drive/app/model.h5")
         print(new_model.summary())
         print(new_model.get_weights())
         self.model = new_model
@@ -63,7 +82,7 @@ class FaceID(object):
         self.model.compile(Adam(lr=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
         history = self.model.fit(self.X_train, self.Y_train, validation_split=self.split, epochs=self.epochs, batch_size=self.batch_size, verbose=2)
         self.history = history
-        self.model.save("/Users/architaggarwal/Downloads/trained_model.h5")
+        self.model.save("drive/app/trained_model.h5")
     
     def plot_loss(self):
         print(self.history.history.keys())
@@ -76,7 +95,7 @@ class FaceID(object):
         plt.show()
     
     def test_model(self):
-        self.test_model = load_model("/Users/architaggarwal/Downloads/trained_model.h5")
+        self.test_model = load_model("drive/app/trained_model.h5")
         predictions = self.test_model.predict(self.X_test, verbose=2)
         answers = []
         for prediction in predictions:
@@ -88,9 +107,20 @@ class FaceID(object):
                     index = i
             answers.append(index)
         print answers
-            
+        self.answers = np.array(answers)
+    """
+    def plot_train_test(self):
+        plt.plot(self.history.history['loss'])
+        plt.plot(self.answers, self.Y_test)
+        plt.title('Model Loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(['train', 'test'])
+        plt.show()
+    """
 if __name__ == '__main__':
     obj = FaceID()
+    obj.load_train_test()
     print("Download Model?")
     first_time = input()
     first_time = int(first_time)
@@ -108,3 +138,4 @@ if __name__ == '__main__':
     first_time = int(first_time)
     if first_time == 1:
         obj.test_model()
+        #obj.plot_train_test()
