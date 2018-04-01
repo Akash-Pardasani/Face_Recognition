@@ -1,53 +1,70 @@
-# USAGE
-# python detect_face_parts.py --shape-predictor shape_predictor_68_face_landmarks.dat --image images/example_01.jpg 
-
-# import the necessary packages
-from imutils import face_utils
 import numpy as np
-import argparse
-import imutils
-import dlib
 import cv2
 import os.path
 
-# construct the argument parser and parse the arguments
-ap = argparse.ArgumentParser()
-ap.add_argument("-p", "--shape-predictor", required=True,
-	help="path to facial landmark predictor")
-ap.add_argument("-i", "--image", required=True,
-	help="path to input image")
-args = vars(ap.parse_args())
+cascFacePath = "haarcascade_frontalface_default.xml"
+cascEyePath = "haarcascade_eye.xml"
+data = []
+num_speaker = 0
+num_bckg = 0
+label = []
+face_cascade = cv2.CascadeClassifier(cascFacePath)
+eye_cascade = cv2.CascadeClassifier(cascEyePath)
+for k in range(7):   # 1- Atul, 2 - Pant, 3 - Sadhguru, 4 - Raman, 5 - Sandeep, 6 - Shailendra
+	for i in range(70000):
+		if k==1:
+			i = i+17002
+		imagePath = ("/home/akash/Desktop/{0}/Frames/frame{1}.jpg".format(k,i))
+		print(i)
+		#imagePath = 'frame321.jpg'
+		if os.path.exists(imagePath):
+			image = cv2.imread(imagePath)
+			gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+			faces = face_cascade.detectMultiScale(gray, 1.2, 5)
+			eyes = eye_cascade.detectMultiScale(gray, 1.2, 5)
+			
+			if (len(faces) == 1):
+				(x, y, w, h) = faces[0]
+				if (image.shape[1]!=0):
+					im1 = image[y:y+h, x:x+w]
+				if (im1.shape[1]!=0):
+					im1 = cv2.resize(im1, (224,224))
+					data.append((im1,k))
+					num_speaker = num_speaker + 1
+					cv2.imwrite("/home/akash/Desktop/{0}/Faces/face{1}.jpg".format(k,i), im1)				
+					print("face detected")
 
-# initialize dlib's face detector (HOG-based) and then create
-# the facial landmark predictor
-detector = dlib.get_frontal_face_detector()
-predictor = dlib.shape_predictor(args["shape_predictor"])
-
-# load the input image, resize it, and convert it to grayscale
-for i in range(60000):
-	imagePath = ("/home/akash/Desktop/Shailendra/Frames/frame%d" %i)
-	#print(i)
-	#imagePath = 'frame321.jpg'
-	if os.path.exists(imagePath):
-		image = cv2.imread(imagePath)
-		image = imutils.resize(image, width=500)
-		gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-
-# detect faces in the grayscale image
-		rects = detector(gray, 1)
-		print(len(rects))
-
-# loop over the face detections
-		for (j, rect) in enumerate(rects):
-	# determine the facial landmarks for the face region, then
-	# convert the landmark (x, y)-coordinates to a NumPy array
-			shape = predictor(gray, rect)
-			shape = face_utils.shape_to_np(shape)
-			(x, y, w, h) = face_utils.rect_to_bb(rect)
-			if (len(rects) == 1):                #If only one face detected, treated as that of the speaker
-				im1 = image[y:y+h, x:x+w]
-				im1 = cv2.resize(im1, (240,240))	
-				cv2.imwrite("/home/akash/Desktop/Shailendra/Faces/face%d" %i, im1)
-	# loop over the face parts individually
-	
+			elif (len(faces) == 0):	
+				if(len(eyes) == 2):
+					(x1,y1,w1,h1) = eyes[0]
+					(x2,y2,w2,h2) = eyes[1]
+					e_span = (x2-x1-w1)
+					y_mid = (y1+y1+h1+y2+y2+h2)/4
+					height = 1.6*4*e_span
+					if (image.shape[1]!=0):
+						im1 = image[y_mid-int(height):y_mid+int(2*height), x1-int(6*e_span/5):x2+w2+int(6*e_span/5)]
+					if(im1.shape[1]!=0):					
+						im1 = cv2.resize(im1, (224,224))
+						data.append((im1,k))
+						num_speaker = num_speaker + 1
+						cv2.imwrite("/home/akash/Desktop/{0}/Faces/face{1}.jpg".format(k,i), im1)
+						print("eyes detected")
+				else:
+					if(image.shape[1]!=0):					
+						im1 = cv2.resize(image, (224,224))
+						data.append((im1,7))
+						num_bckg = num_bckg + 1
+						cv2.imwrite("/home/akash/Desktop/{0}/Crowd/crowd{1}.jpg".format(k,i), im1)
+						print("bckg detected")
 		
+			else:
+				if(image.shape[1]!=0):
+					im1 = cv2.resize(image, (224,224))
+					data.append((im1,7))
+					num_bckg = num_bckg + 1
+					cv2.imwrite("/home/akash/Desktop/{0}/Crowd/crowd{1}.jpg".format(k,i), im1)
+					print("bckg detected")
+
+data = np.array(data)
+np.save('./Data_Face_Reg.npy', data)
+print num_speaker, num_bckg
