@@ -35,34 +35,54 @@ class FaceID(object):
         self.history = None
         self.epochs = 10
         self.split = 0.33
-        self.batch_size = 100
+        self.batch_size = 50
         self.test_model = None
         self.answers = None
     
     def load_train_test(self):
-        test1 = np.load("drive/app/test1.npy")
-        train1 = np.load("drive/app/train1.npy")
+        test1 = np.load("drive/app/Data/test1.npy", encoding = 'latin1')
+        print('3')
+        train1 = np.load("drive/app/Data/train1.npy", encoding = 'latin1')
+        print('4')
         X_train = []
         Y_train = []
+        i = 0
         for image in train1:
-            X_train.append(image[0])
-            Y_train.append(image[1])
+            if i % 2 == 0:
+              X_train.append(image[0])
+              buckets = [0]*7
+              buckets[image[1]-1] = 1
+              Y_train.append(buckets)
+            i = i + 1
+        print('5')
         self.X_train = np.array(X_train)
         self.Y_train = np.array(Y_train)
+        print('6')
         X_test = []
         Y_test = []
+        i = 0
         for image in test1:
-            X_test.append(image[0])
-            Y_test.append(image[1])
+            if i % 2 == 0:
+              X_test.append(image[0])
+              buckets = [0]*7
+              buckets[image[1]-1] = 1
+              Y_test.append(buckets)
+            i = i + 1
+        print('7')
         self.X_test = np.array(X_test)
         self.Y_test = np.array(Y_test)
+        print('8')
     
     def store_pretrained_vgg16(self):
         vgg16_model = keras.applications.vgg16.VGG16()
         print(vgg16_model.summary())
         print(type(vgg16_model))
+        vgg16_model.save("drive/app/model.h5")
+        
+    def load_vgg(self):
+        new_model = load_model("drive/app/model.h5")
         model = Sequential()
-        for layer in vgg16_model.layers:
+        for layer in new_model.layers:
             model.add(layer)
         print(model.summary())
         model.layers.pop()
@@ -70,13 +90,8 @@ class FaceID(object):
             layer.trainable = False
         model.add(Dense(7, activation='softmax'))
         print(model.summary())
-        model.save("drive/app/model.h5")
-        
-    def load_vgg(self):
-        new_model = load_model("drive/app/model.h5")
-        print(new_model.summary())
-        print(new_model.get_weights())
-        self.model = new_model
+        print(model.get_weights())
+        self.model = model
                        
     def train_model(self):
         self.model.compile(Adam(lr=0.0001), loss='categorical_crossentropy', metrics=['accuracy'])
@@ -85,6 +100,7 @@ class FaceID(object):
         self.model.save("drive/app/trained_model.h5")
     
     def plot_loss(self):
+        """
         print(self.history.history.keys())
         plt.plot(self.history.history['loss'])
         plt.plot(self.history.history['val_loss'])
@@ -93,21 +109,50 @@ class FaceID(object):
         plt.xlabel('Epoch')
         plt.legend(['train', 'test'])
         plt.show()
+        """
+        plt.plot(self.history.history['acc'])
+        plt.plot(self.history.history['val_acc'])
+        plt.title('model accuracy')
+        plt.ylabel('accuracy')
+        plt.xlabel('epoch')
+        plt.legend(['train', 'test'], loc='upper left')
+        plt.show()
     
-    def test_model(self):
-        self.test_model = load_model("drive/app/trained_model.h5")
-        predictions = self.test_model.predict(self.X_test, verbose=2)
+    def make_predictions(self):
+        print("1")
+        #test_model = load_model("drive/app/trained_model.h5")
+        print("2")
+        #self.test_model = test_model
+        predictions = self.model.predict(self.X_test, verbose=2)
+        print("3")
         answers = []
-        for prediction in predictions:
+        """
+        c = 0
+        for i in range(len(predictions)):
+          for j in range(len(predictions))
+          if self.Y_test[i] == predictions[i]:
+            c = c + 1
+        accuracy = c/len(predictions)
+        print(accuracy)
+        print(c)
+        print(len(predictions))
+        """
+        c = 0
+        for j in range(len(predictions)):
             max = -1
             index = -1
-            for i in range(len(prediction)):
-                if(prediction[i] > max):
-                    max = prediction[i]
+            for i in range(len(predictions[j])):
+                if(predictions[j][i] > max):
+                    max = predictions[j][i]
                     index = i
-            answers.append(index)
-        print answers
-        self.answers = np.array(answers)
+            if self.Y_test[j][index] == 1:
+              c = c + 1
+            #answers.append(index)
+        print(c/len(predictions))
+        print(c)
+        print(len(predictions))
+        #print(answers)
+        #self.answers = np.array(answers)
     """
     def plot_train_test(self):
         plt.plot(self.history.history['loss'])
@@ -120,7 +165,9 @@ class FaceID(object):
     """
 if __name__ == '__main__':
     obj = FaceID()
+    print("1")
     obj.load_train_test()
+    print('2')
     print("Download Model?")
     first_time = input()
     first_time = int(first_time)
@@ -137,5 +184,5 @@ if __name__ == '__main__':
     first_time = input()
     first_time = int(first_time)
     if first_time == 1:
-        obj.test_model()
+        obj.make_predictions()
         #obj.plot_train_test()
